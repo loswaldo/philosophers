@@ -49,22 +49,26 @@ func monitor(philo *[]Philo) {
 }
 
 func philoLiveCycle(philo *Philo) {
-	if philo.number/2 == 0 {
-		time.Sleep(70 * time.Nanosecond)
-	}
 	for {
+		var firstFork *sync.Mutex
+		var secondFork *sync.Mutex
+		if philo.number/2 == 0 {
+			firstFork = philo.leftFork
+			secondFork = philo.rightFork
+		} else {
+			firstFork = philo.rightFork
+			secondFork = philo.leftFork
+		}
 
-		philo.rightFork.Lock()
+		firstFork.Lock()
 		printMesage("take a fork", philo.number, philo.messageMutex, philo.startSim)
-		philo.leftFork.Lock()
+		secondFork.Lock()
 		printMesage("take a fork", philo.number, philo.messageMutex, philo.startSim)
 		printMesage("eating", philo.number, philo.messageMutex, philo.startSim)
-		time.Sleep(time.Millisecond * time.Duration(philo.timeToEat))
 		philo.lastEating = time.Now().UnixMilli()
-		philo.rightFork.Unlock()
-		printMesage("put a fork", philo.number, philo.messageMutex, philo.startSim)
-		philo.leftFork.Unlock()
-		printMesage("put a fork", philo.number, philo.messageMutex, philo.startSim)
+		time.Sleep(time.Millisecond * time.Duration(philo.timeToEat))
+		firstFork.Unlock()
+		secondFork.Unlock()
 		printMesage("is sleeping", philo.number, philo.messageMutex, philo.startSim)
 		time.Sleep(time.Millisecond * time.Duration(philo.timeToSleep))
 		printMesage("thinking", philo.number, philo.messageMutex, philo.startSim)
@@ -75,11 +79,11 @@ func main() {
 	t := time.Now().UnixMilli()
 	args := os.Args[1:]
 	if len(args) != 4 {
-		log.Fatal("wrong numbers of arg : <philo_count>, <timeToDead> ,<timeToSleep> ,<time_to_eat>")
+		log.Fatal("wrong numbers of arg : <philoCount>, <timeToDead> ,<timeToSleep> ,<time_to_eat>")
 	}
 
 	var wg sync.WaitGroup
-	philo_count, err := strconv.Atoi(args[0])
+	philoCount, err := strconv.Atoi(args[0])
 	checkError(err)
 	timeToDead, err := strconv.Atoi(args[1])
 	checkError(err)
@@ -87,9 +91,9 @@ func main() {
 	checkError(err)
 	timeToEat, err := strconv.Atoi(args[3])
 	var messageMutex sync.Mutex
-	var mutex = make([]sync.Mutex, philo_count)
-	var philosophers = make([]Philo, philo_count)
-	for i := 0; i < philo_count; i++ {
+	var mutex = make([]sync.Mutex, philoCount)
+	var philosophers = make([]Philo, philoCount)
+	for i := 0; i < philoCount; i++ {
 		philosophers[i] = Philo{
 			number:       i + 1,
 			timeToDead:   timeToDead,
@@ -100,13 +104,13 @@ func main() {
 			startSim:     t,
 			lastEating:   t,
 		}
-		if i == (philo_count - 1) {
+		if i == (philoCount - 1) {
 			philosophers[i].rightFork = &mutex[0]
 		} else {
 			philosophers[i].rightFork = &mutex[i+1]
 		}
 	}
-	for i := 0; i < philo_count; i++ {
+	for i := 0; i < philoCount; i++ {
 		wg.Add(1)
 		go philoLiveCycle(&philosophers[i])
 		defer wg.Done()
